@@ -1,3 +1,4 @@
+# FUTURE: CLI tool to parse Patito source files and print the generated AST for debugging/demos.
 from __future__ import annotations
 
 import sys

@@ -1,3 +1,4 @@
+# FUTURE: Transforms ANTLR parse tree into simplified Python AST (tuples/dicts) for semantic analysis.
 from __future__ import annotations
 
 from typing import Any, List, Optional, Tuple
