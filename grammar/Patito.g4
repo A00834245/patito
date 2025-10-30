@@ -101,7 +101,7 @@ vars_p
 ;
 
 vars_pp
-: COMMA vars_p
+: COMMA ID vars_pp
 | /* empty */
 ;
 
@@ -113,7 +113,7 @@ vars_ppp
 
 // ***** <FUNCS> (FUNCS, FUNCS_P, FUNCS_PP, FUNCS_PPP, FUNCS_PPPP)
 funcs
-: VOID ID LPAREN funcs_p RPAREN LBR funcs_pppp body RBR SEMI
+: VOID ID LP funcs_p RP LBR funcs_pppp body RBR SEMI
 ;
 
 funcs_p
@@ -152,7 +152,7 @@ body_pp
 
 // ***** <CONDITION> (CONDITION, CONDITION_P)
 condition
- : IF LPAREN expresion RPAREN body condition_p SEMI
+ : IF LP expresion RP body condition_p SEMI
  ;
 
 condition_p
@@ -185,7 +185,7 @@ termino_p
 
 // ***** <FACTOR> (FACTOR, FACTOR_P)
 factor
- : LPAREN expresion RPAREN
+ : LP expresion RP
  | factor_p
  ;
 
@@ -218,7 +218,7 @@ expresion_p
 
 // ***** <PRINT> (PRINT, PRINT_P)
 print_stmt
- : PRINT LPAREN print_p print_pp RPAREN SEMI
+ : PRINT LP print_p print_pp RP SEMI
  ;
 
 print_p
@@ -233,7 +233,7 @@ print_pp
 
 // ***** <FCALL> (FCALL_PP, FCALL_P)
 fcall
- : ID LPAREN fcall_p RPAREN SEMI
+ : ID LP fcall_p RP SEMI
  ;
 
 fcall_p
@@ -275,7 +275,7 @@ cte
 
 // ***** <CYCLE> 
 cycle
- : WHILE LPAREN expresion RPAREN DO cuerpo SEMI
+ : WHILE LP expresion RP DO body SEMI
  ;
 
 

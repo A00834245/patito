@@ -22,18 +22,18 @@ pip install -r requirements.txt
 After installing Java 11+, restart your terminal/PowerShell, then run:
 
 ```powershell
-java -jar antlr-4.13.2-complete.jar -Dlanguage=Python3 -visitor -o src/patito src/patito/Patito.g4
+java -jar antlr-4.13.2-complete.jar -Dlanguage=Python3 -visitor -o src/patito/generated grammar/Patito.g4
 ```
 
 **If `java` command not found**, use the full path:
 
 ```powershell
-& "C:\Program Files\Java\jdk-<version>\bin\java.exe" -jar antlr-4.13.2-complete.jar -Dlanguage=Python3 -visitor -o src/patito src/patito/Patito.g4
+& "C:\Program Files\Java\jdk-<version>\bin\java.exe" -jar antlr-4.13.2-complete.jar -Dlanguage=Python3 -visitor -o src/patito/generated grammar/Patito.g4
 ```
 
-This generates: `PatitoLexer.py`, `PatitoParser.py`, `PatitoVisitor.py`, `PatitoListener.py` in `src/patito/`.
+This generates: `PatitoLexer.py`, `PatitoParser.py`, `PatitoVisitor.py`, `PatitoListener.py` in `src/patito/generated/`.
 
-**Note**: You only need to run this once (or when you modify `Patito.g4`).
+**Note**: You only need to run this once (or when you modify `grammar/Patito.g4`).
 
 ## Run tests
 

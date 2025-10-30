@@ -15,10 +15,10 @@ except Exception as e:  # pragma: no cover
     ) from e
 
 _BASE_PKGS = (
+    "patito.generated",  # Primary location for generated files
     "patito",
     "patito.antlr",
     "patito.grammar",
-    "patito.generated",
     "patito.gen",
 )
 

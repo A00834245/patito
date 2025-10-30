@@ -66,3 +66,43 @@ Thumbs.db
 
 # ANTLR JAR (optional: comment out if you want to keep it in repo)
 antlr-*.jar
+
+# ANTLR generated artifacts
+*.interp
+*.tokens
+
+# Python eggs
+*.egg-info/
+.eggs/
+
+# Unit test / coverage reports
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Environments
+.env
+.env.local
+
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
