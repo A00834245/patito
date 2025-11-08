@@ -106,3 +106,8 @@ logs/
 *.bak
 *.swp
 *~
+
+# Docs requested to be ignored
+/entrega2/*.md
+/TEST_PLAN.md
+/VALIDACION_TESTS.md
