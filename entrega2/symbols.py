@@ -150,13 +150,3 @@ class FunctionDirectory:
 
     def all_functions(self) -> Dict[str, FunctionInfo]:  # pragma: no cover
         return dict(self._funcs)
-
-
-# Ejemplo de uso (ilustrativo):
-# fd = FunctionDirectory()
-# fd.declare_global("a", "int")
-# f = fd.declare_function("f", return_type="void")
-# fd.declare_param("f", "x", "int")
-# fd.declare_local("f", "t1", "float")
-# assert fd.resolve_var("x", current_func="f").kind == "param"
-# assert fd.resolve_var("a", current_func="f").kind == "global"
