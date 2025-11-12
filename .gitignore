@@ -111,3 +111,6 @@ logs/
 /entrega2/*.md
 /TEST_PLAN.md
 /VALIDACION_TESTS.md
+
+# Agent context file (local only)
+AGENTS.md
