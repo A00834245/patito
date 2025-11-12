@@ -1,4 +1,4 @@
-# Construye el directorio de funciones y tablas de variables a partir del AST de Patito.
+# Construye el directorio de funciones y tablas de variables a partir del IR generado por el traductor de Patito.
 from __future__ import annotations
 
 from typing import Any, Iterable
