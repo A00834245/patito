@@ -227,11 +227,14 @@ class TranslatorPilas(_BaseVisitor):
             # unary plus: no-op
             return None
         if sign == "-":
-            # emulate 0 - x
-            val_type = self.PTipos.peek() or "int"
-            zero = 0.0 if val_type == "float" else 0
+            # emulate 0 - x (ensure correct operand order: left=0, right=x)
+            val = self.PilaO.pop()
+            val_ty = self.PTipos.pop() if self.PTipos else "int"
+            zero = 0.0 if val_ty == "float" else 0
             self.PilaO.push(zero)
-            self.PTipos.push(val_type)
+            self.PTipos.push(val_ty)
+            self.PilaO.push(val)
+            self.PTipos.push(val_ty)
             self._push_op("MINUS")
             # immediate reduction of unary
             self._reduce_one()

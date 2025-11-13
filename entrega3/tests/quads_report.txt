@@ -1,0 +1,156 @@
+# Quads Report
+
+## Pytest summary
+
+````
+...............                                                          [100%]
+15 passed in 0.19s
+````
+
+## Program quads
+
+### 1. example_file_program
+
+```patito
+program P;
+var a, b: int;
+main {
+  a = 1 + 2 * 3;
+  print("ans:", a, 7 - 2);
+  print(1 + 2 < 5, 9 != 8);
+} end
+```
+
+```text
+MUL	2	3	t1
+PLUS	1	t1	t2
+ASSIGN	t2	None	a
+PRINT	"ans:"	None	None
+PRINT	a	None	None
+MINUS	7	2	t3
+PRINT	t3	None	None
+PLUS	1	2	t4
+CMP_LT	t4	5	t5
+PRINT	t5	None	None
+CMP_NEQ	9	8	t6
+PRINT	t6	None	None
+```
+
+### 2. mixed_prints_with_strings_and_expr
+
+```patito
+program P;
+var a: int;
+main { a = 5; print("A=", a); print((1 + 2) * (3 - 1)); } end
+```
+
+```text
+ASSIGN	5	None	a
+PRINT	"A="	None	None
+PRINT	a	None	None
+PLUS	1	2	t1
+MINUS	3	1	t2
+MUL	t1	t2	t3
+PRINT	t3	None	None
+```
+
+### 3. parentheses_precedence_assign_and_print
+
+```patito
+program P;
+var x: int;
+main { x = (1 + 2) * 3; print(x); } end
+```
+
+```text
+PLUS	1	2	t1
+MUL	t1	3	t2
+ASSIGN	t2	None	x
+PRINT	x	None	None
+```
+
+### 4. relational_gt_in_print
+
+```patito
+program P;
+main { print(3 * 2 > 5); } end
+```
+
+```text
+MUL	3	2	t1
+CMP_GT	t1	5	t2
+PRINT	t2	None	None
+```
+
+### 5. test_arithmetic_precedence
+
+```patito
+program P;
+var a: int;
+main { a = 1 + 2 * 3; } end
+```
+
+```text
+MUL	2	3	t1
+PLUS	1	t1	t2
+ASSIGN	t2	None	a
+```
+
+### 6. test_assign_and_print_mixed_args
+
+```patito
+program P;
+var a: int;
+main { a = 5; print("x:", a, 7 - 2); } end
+```
+
+```text
+ASSIGN	5	None	a
+PRINT	"x:"	None	None
+PRINT	a	None	None
+MINUS	7	2	t1
+PRINT	t1	None	None
+```
+
+### 7. test_relational_and_print_single
+
+```patito
+program P;
+main { print(1 + 2 < 5); } end
+```
+
+```text
+PLUS	1	2	t1
+CMP_LT	t1	5	t2
+PRINT	t2	None	None
+```
+
+### 8. two_relations_two_prints
+
+```patito
+program P;
+main { print(1 < 2, 4 > 3); } end
+```
+
+```text
+CMP_LT	1	2	t1
+PRINT	t1	None	None
+CMP_GT	4	3	t2
+PRINT	t2	None	None
+```
+
+### 9. unary_minus_and_plus_chain
+
+```patito
+program P;
+var x: int;
+main { x = -1 + 2; print(x); } end
+```
+
+```text
+MINUS	0	1	t1
+PLUS	t1	2	t2
+ASSIGN	t2	None	x
+PRINT	x	None	None
+```
+
