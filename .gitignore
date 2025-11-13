@@ -111,3 +111,11 @@ logs/
 /entrega2/*.md
 /TEST_PLAN.md
 /VALIDACION_TESTS.md
+
+# Agent context file (local only)
+AGENTS.md
+entrega3/FUTURE_IMPLEMENTATIONS.md
+entrega3/README_entrega3.md
+entrega3/ENTREGA 3 SUMMARY.md
+entrega3/ENTREGA3_Familiarization.md
+entrega3/E3WrittenSummary.md

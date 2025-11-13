@@ -1,6 +1,6 @@
 # Patito
 
-Minimal ANTLR4-based parser + AST visitor and CLI for the Patito language.
+Minimal ANTLR4-based parser plus a syntax-directed translator and CLI for the Patito language.
 
 ## Prerequisites
 
@@ -45,14 +45,20 @@ pytest -q
 
 ## CLI usage
 
-Parse a file and print the tuple-based AST:
+Default: parse and print IR (quadruples), one per line:
 
 ```
 python -m patito.patito_cli path/to/program.pat
 ```
 
-Or pipe from stdin:
+Execute program instead (interpret the IR) and print outputs:
 
 ```
-type path\to\program.pat | python -m patito.patito_cli
+python -m patito.patito_cli --run path/to/program.pat
+```
+
+Pipe from stdin:
+
+```
+type path\to\program.pat | python -m patito.patito_cli --run
 ```
