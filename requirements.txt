@@ -1,2 +1,5 @@
-antlr4-python3-runtime>=4.13,<5
-pytest>=7.0
+# ANTLR 
+antlr4-python3-runtime
+
+# Testing
+pytest
