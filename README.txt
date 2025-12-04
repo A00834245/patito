@@ -22,3 +22,4 @@ pytest -s entrega3/tests
 pytest -s entrega4/tests
 
 -- Entrega 5 tests
+pytest -s entrega5/tests
