@@ -1,55 +1,60 @@
-# entrega3/codegen_visitor.py
-
 from __future__ import annotations
-from typing import List
+from typing import List, Tuple, Optional
 
 from antlr4 import InputStream, CommonTokenStream
 
-from ..entrega1.generated.PatitoLexer import PatitoLexer
-from ..entrega1.generated.PatitoParser import PatitoParser
+from entrega1.generated.PatitoLexer import PatitoLexer
+from entrega1.generated.PatitoParser import PatitoParser
 
-from ..entrega2.semantic_visitor import SemanticVisitor
-from ..entrega2.semantic_cube import (
+from entrega2.semantic_visitor import SemanticVisitor
+from entrega2.semantic_cube import (
     TypeName,
     type_of_binary,
     type_of_unary,
     can_assign,
 )
-from ..entrega2.symbols import TypeMismatchError
+from entrega2.symbols import TypeMismatchError
 
-from ..entrega4.virtual_memory import ConstantTable
+from entrega4.virtual_memory import ConstantTable
 
 
-Quad = tuple[str, object, object, object]
+Quad = Tuple[str, object, object, object]
 
 
 class CodeGenVisitor(SemanticVisitor):
     """
-    Visitor de entrega 3:
+    Visitor de entrega 3 y 4:
     - Reusa toda la semántica de entrega2 (directorios, tipos, etc.)
     - Agrega:
         * PilaO      (operandos: direcciones virtuales)
         * PTypes     (tipos de cada operando)
         * POper      (operadores)
+        * PSaltos    (índices de cuádruplos de salto: GOTOF / GOTO)
         * quads      (lista de cuádruplos)
-    - Traduce:
+    - Traduce con Syntax-Directed Translation:
         * expresion, exp, termino, factor
         * assign
         * print_cfg
+        * condition / condition_p (if / if-else)
+        * cycle (while)
     """
 
     def __init__(self) -> None:
         super().__init__()  # construye func_dir, vm, etc.
+
         # Pilas
         self.PilaO: List[int] = []          # operandos (dir. virtuales)
         self.PTypes: List[TypeName] = []    # tipos de operandos
         self.POper: List[str] = []          # operadores (+, -, *, /, <, >, ==, ...)
+        self.PSaltos: List[int] = []        # índices de cuádruplos de salto
+
         # Fila de cuádruplos
         self.quads: List[Quad] = []
-        # Tabla de constantes (usa la misma instancia de VirtualMemory)
+
+        # Tabla de constantes (encima de la misma VirtualMemory)
         self.const_table = ConstantTable(self.vm)
 
-    # ----------------- Helper interno para binarios ----------------- #
+    # ----------------- Helpers internos ----------------- #
 
     def _reduce_binary(self, valid_ops: set[str]) -> None:
         """
@@ -82,6 +87,24 @@ class CodeGenVisitor(SemanticVisitor):
             self.PilaO.append(temp_addr)
             self.PTypes.append(result_type)
 
+    def _emit(self, op: str, left: Optional[object],
+              right: Optional[object], result: Optional[object]) -> int:
+        """
+        Agrega un cuádruplo a la fila y regresa su índice.
+        Útil para GOTOF / GOTO en estatutos condicionales y cíclicos.
+        """
+        idx = len(self.quads)
+        self.quads.append((op, left, right, result))
+        return idx
+
+    def _fill_jump(self, quad_index: int, target: int) -> None:
+        """
+        Rellena el campo RESULT de un cuádruplo de salto (GOTOF / GOTO)
+        con el índice de destino.
+        """
+        op, left, right, _ = self.quads[quad_index]
+        self.quads[quad_index] = (op, left, right, target)
+
     # ----------------- PROGRAMA / START ----------------- #
 
     # Sobrescribimos start para regresar también los quads
@@ -93,7 +116,7 @@ class CodeGenVisitor(SemanticVisitor):
         #   - self.quads
         return self.func_dir, self.quads
 
-    # ----------------- STATEMENTS LINEALES ----------------- #
+    # ----------------- STATEMENTS (lineales + condicionales + cíclicos) ----------------- #
 
     # statement : assign | condition | cycle | fcall SEMI | print_cfg | LB statement_p RB ;
     def visitStatement(self, ctx: PatitoParser.StatementContext):
@@ -102,15 +125,14 @@ class CodeGenVisitor(SemanticVisitor):
         if ctx.print_cfg():
             return self.visit(ctx.print_cfg())
         if ctx.fcall():
-            # Por ahora, para entrega 3, podemos sólo visitar la llamada
-            # (sin generar GOSUB todavía)
+            # Aún no generamos ERA/PARAM/GOSUB; solo visitamos la llamada.
             return self.visit(ctx.fcall())
         if ctx.condition():
-            # Condicionales se verán en entrega 4
-            return super().visitCondition(ctx.condition())
+            # Traducción dirigida por la sintaxis para if / if-else
+            return self.visit(ctx.condition())
         if ctx.cycle():
-            # Ciclos también en entrega 4
-            return super().visitCycle(ctx.cycle())
+            # Traducción para while
+            return self.visit(ctx.cycle())
         if ctx.LB():
             # Bloque { statement_p }
             return self.visit(ctx.statement_p())
@@ -118,9 +140,21 @@ class CodeGenVisitor(SemanticVisitor):
 
     # body : LB body_p RB ;
     def visitBody(self, ctx: PatitoParser.BodyContext):
-        # Delegar al mismo recorrido recursivo que en SemanticVisitor,
-        # pero permitiendo generación de cuádruplos en los statements internos.
         return self.visit(ctx.body_p())
+
+    # body_p : body_pp | /* empty */ ;
+    def visitBody_p(self, ctx: PatitoParser.Body_pContext):
+        if ctx.getChildCount() == 0:
+            return None
+        return self.visit(ctx.body_pp())
+
+    # body_pp : statement body_pp | /* empty */ ;
+    def visitBody_pp(self, ctx: PatitoParser.Body_ppContext):
+        if ctx.getChildCount() == 0:
+            return None
+        self.visit(ctx.statement())
+        self.visit(ctx.body_pp())
+        return None
 
     # statement_p : statement statement_p | /* empty */ ;
     def visitStatement_p(self, ctx: PatitoParser.Statement_pContext):
@@ -141,7 +175,7 @@ class CodeGenVisitor(SemanticVisitor):
         dest_addr = var_info.address
         dest_type = var_info.type
 
-        # Evaluar la expresion del lado derecho
+        # Evaluar la expresión del lado derecho
         self.visit(ctx.expresion())
 
         expr_addr = self.PilaO.pop()
@@ -170,7 +204,7 @@ class CodeGenVisitor(SemanticVisitor):
             # Caso: print(expresion, ...)
             self.visit(ctx.expresion())
             value_addr = self.PilaO.pop()
-            value_type = self.PTypes.pop()
+            _value_type = self.PTypes.pop()
             # Cuádruplo: PRINT value
             self.quads.append(("PRINT", value_addr, None, None))
         else:
@@ -189,6 +223,96 @@ class CodeGenVisitor(SemanticVisitor):
         if ctx.getChildCount() == 0:
             return None
         self.visit(ctx.print_p())
+        return None
+
+    # ----------------- CONDICIONALES (IF / IF-ELSE) ----------------- #
+
+    # condition   : IF LP expresion RP body condition_p SEMI ;
+    # condition_p : ELSE body | /* empty */ ;
+    def visitCondition(self, ctx: PatitoParser.ConditionContext):
+        # 1. Evaluar la expresión condicional
+        self.visit(ctx.expresion())
+
+        cond_addr = self.PilaO.pop()
+        cond_type: TypeName = self.PTypes.pop()
+
+        # Debe ser bool (producto de un relacional, p.ej. x > 3)
+        if cond_type != "bool":
+            raise TypeMismatchError("La condición de un if debe ser de tipo bool")
+
+        # 2. Generar GOTOF cond, -, -
+        gotof_idx = self._emit("GOTOF", cond_addr, None, None)
+
+        # Guardar índice en la pila de saltos
+        self.PSaltos.append(gotof_idx)
+
+        # 3. Traducir el bloque del if (parte verdadera)
+        self.visit(ctx.body())
+
+        # 4. Manejar la parte opcional (else / vacío)
+        self.visit(ctx.condition_p())
+
+        return None
+
+    def visitCondition_p(self, ctx: PatitoParser.Condition_pContext):
+        # Sin ELSE: condition_p -> ε
+        if ctx.getChildCount() == 0:
+            # Rellenar el GOTOF para que salte al final del if
+            falso = self.PSaltos.pop()
+            self._fill_jump(falso, len(self.quads))
+            return None
+
+        # Con ELSE: condition_p -> ELSE body
+        # 1. Generar GOTO para saltar el bloque else al final
+        goto_idx = self._emit("GOTO", None, None, None)
+
+        # 2. Rellenar el GOTOF anterior para que brinque al inicio del else
+        falso = self.PSaltos.pop()
+        self._fill_jump(falso, len(self.quads))  # siguiente cuádruplo (inicio del else)
+
+        # 3. Guardar el GOTO para rellenarlo al final del else
+        self.PSaltos.append(goto_idx)
+
+        # 4. Traducir bloque else
+        self.visit(ctx.body())
+
+        # 5. Rellenar el GOTO del final del if-else
+        fin = self.PSaltos.pop()
+        self._fill_jump(fin, len(self.quads))
+
+        return None
+
+    # ----------------- CICLOS (WHILE) ----------------- #
+
+    # cycle : WHILE LP expresion RP DO body SEMI ;
+    def visitCycle(self, ctx: PatitoParser.CycleContext):
+        # 1. Marcar el inicio del ciclo (antes de evaluar la condición)
+        loop_start = len(self.quads)
+        self.PSaltos.append(loop_start)
+
+        # 2. Evaluar la condición del while
+        self.visit(ctx.expresion())
+        cond_addr = self.PilaO.pop()
+        cond_type: TypeName = self.PTypes.pop()
+
+        if cond_type != "bool":
+            raise TypeMismatchError("La condición de un while debe ser de tipo bool")
+
+        # 3. GOTOF para salir del ciclo
+        gotof_idx = self._emit("GOTOF", cond_addr, None, None)
+        self.PSaltos.append(gotof_idx)
+
+        # 4. Traducir el cuerpo del while
+        self.visit(ctx.body())
+
+        # 5. GOTO de regreso al inicio del ciclo
+        falso = self.PSaltos.pop()
+        loop_start = self.PSaltos.pop()
+        self._emit("GOTO", None, None, loop_start)
+
+        # 6. Rellenar GOTOF para que salga al final del ciclo
+        self._fill_jump(falso, len(self.quads))
+
         return None
 
     # ----------------- EXPRESIÓN (relacionales) ----------------- #
@@ -251,7 +375,7 @@ class CodeGenVisitor(SemanticVisitor):
         # 1. Push operador +/-
         self.POper.append(op)
 
-        # 2. Procesar el siguiente termino
+        # 2. Procesar el siguiente término
         self.visit(ctx.termino())
 
         # 3. Reducir todas las +, - pendientes
@@ -298,8 +422,8 @@ class CodeGenVisitor(SemanticVisitor):
             # ( expresion )
             self.visit(ctx.expresion())
         elif ctx.fcall():
-            # Para entrega 3, podemos sólo visitar la llamada;
-            # en entrega 4 ya generaremos ERA/PARAM/GOSUB
+            # Para esta entrega, solo visitamos la llamada;
+            # en una etapa posterior se pueden generar ERA/PARAM/GOSUB.
             self.visit(ctx.fcall())
         else:
             # factor_p: posible +id, -id, +cte, -cte, id, cte
@@ -371,9 +495,14 @@ class CodeGenVisitor(SemanticVisitor):
         return None
 
 
-def build_quads_from_source(source: str):  # Solo para los tests
-    """Construye lexer, parser y visitor a partir de código fuente y regresa
-    (FunctionDirectory, lista_de_quads)."""
+# ----------------- Helper para pruebas (Syntax-Directed Translation completa) ----------------- #
+
+def build_quads_from_source(source: str):
+    """
+    Recibe código fuente Patito como string, ejecuta
+    scanner + parser + CodeGenVisitor (Syntax-Directed Translation)
+    y regresa (func_dir, quads).
+    """
     input_stream = InputStream(source)
     lexer = PatitoLexer(input_stream)
     tokens = CommonTokenStream(lexer)

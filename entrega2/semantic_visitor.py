@@ -3,13 +3,13 @@
 
 from __future__ import annotations
 
-from .symbols import FunctionDirectory
-from .semantic_cube import TypeName
+from entrega2.symbols import FunctionDirectory
+from entrega2.semantic_cube import TypeName
 
-from ..entrega1.generated.PatitoParser import PatitoParser
-from ..entrega1.generated.PatitoVisitor import PatitoVisitor
+from entrega1.generated.PatitoParser import PatitoParser
+from entrega1.generated.PatitoVisitor import PatitoVisitor
 
-from ..entrega4.virtual_memory import VirtualMemory  # Agregue en entrega3
+from entrega4.virtual_memory import VirtualMemory  # Agregue en entrega3
 
 
 class SemanticVisitor(PatitoVisitor):

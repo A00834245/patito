@@ -1,6 +1,6 @@
 # entrega3/tests/test_quads_basicos.py
 
-from ..codegen_visitor import build_quads_from_source
+from entrega3.codegen_visitor import build_quads_from_source
 
 def test_quads_asignacion_y_print():
     source = """
