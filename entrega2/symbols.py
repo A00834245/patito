@@ -77,11 +77,15 @@ class ParamInfo:
 #Guarda toda la informacion de una funcion 
 @dataclass
 class FunctionInfo:
-    name: str
+    name: str 
     return_type: TypeName = "void"
     params: List[ParamInfo] = field(default_factory=list)
-    vars: VarTable = field(default_factory=VarTable) #tabla de variables locales y parametros
-    start_quad: Optional[int] = None #numero de cuadruplo donde inicia la funcion para gosub, ahorita no lo uso
+    vars: VarTable = field(default_factory=VarTable)  # tabla de variables locales y parámetros
+    start_quad: Optional[int] = None  # índice de cuádruplo donde inicia la función (para GOSUB)
+    # Dirección virtual donde se almacenará el valor de retorno de la función (si no es void).
+    # Se llena en CodeGenVisitor al momento de declarar la función.
+    return_address: Optional[int] = None #modificado en entrega5
+
 
     #Declara un parametro de la funcion, lo agrega a lista de params, y lo mete a la VarTable de la funcion (kind = param)
     def declare_param(self, name: str,type_: TypeName, address: Optional[int] = None,) -> ParamInfo: #Agregue address en entrega3

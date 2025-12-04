@@ -17,3 +17,8 @@ pytest entrega2/tests
 
 -- Entrega 3 tests (con resultados)
 pytest -s entrega3/tests
+
+-- Entrega 4 tests (con resultados)
+pytest -s entrega4/tests
+
+-- Entrega 5 tests
