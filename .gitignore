@@ -6,4 +6,5 @@ __pycache__/
 /entrega1/.pytest_cache/
 # Bytecode cache inside entrega1
 /entrega1/__pycache__/
-# ...existing code...
+
+/entrega1/.antlr

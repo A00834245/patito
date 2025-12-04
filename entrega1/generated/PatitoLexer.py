@@ -1,3 +1,4 @@
+# Scanner -> Analizador Lexico
 # Generated from Patito.g4 by ANTLR 4.13.2
 from antlr4 import *
 from io import StringIO

@@ -1,7 +1,7 @@
 // DESCRIPTION: Definicion de mi lenguaje PATITO
 
 // Nombre 
-grammar Patito;
+grammar patito; //cambiar a Patito con mayuscula
 
 //================================== TOKENS LEXICOS ==================================
 
