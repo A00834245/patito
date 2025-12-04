@@ -3,8 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from entrega4.codegen_visitor import Quad
-
+from entrega3.codegen_visitor import Quad
 
 # Rangos de direcciones virtuales, deben coincidir con virtual_memory.py
 GLOBAL_MIN, GLOBAL_MAX = 1000, 2999
@@ -16,7 +15,7 @@ CONST_MIN, CONST_MAX = 13000, 14999
 @dataclass
 class MemorySpace:
     """
-    Representa un espacio de memoria simple: mapea
+    Representa un espacio de memoria simple:
     dirección virtual -> valor en tiempo de ejecución.
     """
     values: Dict[int, Any] = field(default_factory=dict)
@@ -48,22 +47,20 @@ class ActivationRecord:
 
 class VirtualMachine:
     """
-    Máquina Virtual de Patito (Entrega 5).
+    Máquina Virtual de Patito (Entrega 5/6).
 
     Ejecuta los cuádruplos generados por CodeGenVisitor usando un
-    mapa de memoria de ejecución. Inicialmente, soporta:
+    mapa de memoria de ejecución.
 
-        - Expresiones aritméticas: +, -, *, /
+    Soporta:
+
+        - Expresiones aritméticas: +, -, *, /  (incluyendo - unario)
         - Expresiones relacionales: <, >, <=, >=, ==, !=
         - Asignación: =
         - PRINT
         - Control de flujo: GOTO, GOTOF
+        - Llamadas a función: ERA, PARAM, GOSUB, RETURN, ENDFUNC
         - Final de programa: END
-
-    y deja preparada la estructura para:
-
-        - ERA, PARAM, GOSUB, RETURN, ENDFUNC
-          (llamadas a función con Activation Records)
     """
 
     def __init__(
@@ -97,6 +94,9 @@ class VirtualMachine:
         """
         Decide en qué espacio de memoria vive una dirección virtual.
         """
+        if addr is None:
+            raise RuntimeError("Dirección None inesperada")
+
         if CONST_MIN <= addr <= CONST_MAX:
             # Constantes: siempre vienen precargadas
             return self.const_mem
@@ -144,7 +144,7 @@ class VirtualMachine:
             if self.debug:
                 print(f"[IP={self.ip:03}] {op}, {left}, {right}, {res}")
 
-            # Aritmética básica
+            # Aritmética básica (+, -, *, /) incluyendo - unario
             if op in {"+", "-", "*", "/"}:
                 self._exec_arithmetic(op, left, right, res)
 
@@ -175,7 +175,7 @@ class VirtualMachine:
                     self.ip = int(res)
                     continue
 
-            # --------- Soporte básico para funciones (estructura lista) --------- #
+            # --------- Soporte para funciones --------- #
 
             elif op == "ERA":
                 # Prepara un nuevo frame para la próxima llamada a función.
@@ -236,22 +236,39 @@ class VirtualMachine:
 
     # ----------------- Implementación de operadores ----------------- #
 
-    def _exec_arithmetic(self, op: str, left: int, right: int, res: int) -> None:
-        a = self._read(left)
-        b = self._read(right)
+    def _exec_arithmetic(
+        self,
+        op: str,
+        left: Optional[int],
+        right: Optional[int],
+        res: int,
+    ) -> None:
+        """
+        Soporta operadores aritméticos binarios y el menos unario.
 
-        if op == "+":
-            value = a + b
-        elif op == "-":
-            value = a - b
-        elif op == "*":
-            value = a * b
-        elif op == "/":
-            # En Patito, int / int regresa float según el cubo semántico;
-            # aquí delegamos en Python (que ya hace eso si hay float).
-            value = a / b
+        - Binario: (op, left, right, res)
+        - Unario:  ("-", operand, None, res)
+        """
+        # Caso especial: menos unario
+        if op == "-" and right is None:
+            a = self._read(left)
+            value = -a
         else:
-            raise RuntimeError(f"Operador aritmético desconocido: {op}")
+            a = self._read(left)
+            b = self._read(right)
+
+            if op == "+":
+                value = a + b
+            elif op == "-":
+                value = a - b
+            elif op == "*":
+                value = a * b
+            elif op == "/":
+                # En Patito, int / int regresa float según el cubo semántico;
+                # aquí delegamos en Python (que ya hace eso si hay float).
+                value = a / b
+            else:
+                raise RuntimeError(f"Operador aritmético desconocido: {op}")
 
         self._write(res, value)
 

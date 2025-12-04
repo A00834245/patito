@@ -1,7 +1,7 @@
 // DESCRIPTION: Definicion de mi lenguaje PATITO
 
 // Nombre 
-grammar patito; //cambiar a Patito con mayuscula
+grammar Patito; //cambiar a Patito con mayuscula
 
 //================================== TOKENS LEXICOS ==================================
 
@@ -166,12 +166,13 @@ fcall_pp : COMMA fcall_p | /* empty */ ;
 
 // ----------------- <STATEMENT> ------------------
 
-statement : assign | condition | cycle | fcall SEMI | print_cfg | LB statement_p RB ;
+statement : assign | condition | cycle | fcall SEMI | print_cfg | return_cfg | LB statement_p RB ;
 // STATEMENT→ ASSIGN
 // STATEMENT→ CONDITION
 // STATEMENT→ CYCLE
 // STATEMENT→ F_CALL ;
 // STATEMENT→ PRINT
+// Agregue return
 // STATEMENT → [ STATEMENT_P ]
 
 statement_p : statement statement_p | /* empty */ ;

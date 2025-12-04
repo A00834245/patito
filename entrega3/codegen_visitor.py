@@ -96,12 +96,41 @@ class CodeGenVisitor(SemanticVisitor):
 
     # Sobrescribimos start para regresar también los quads
     def visitStart(self, ctx: PatitoParser.StartContext):
-        # Esto construye directorio de funciones, variables, etc. (Entrega 2)
-        super().visitStart(ctx)
-        # Al final ya tenemos:
-        #   - self.func_dir
-        #   - self.quads
+        # Aquí ya generamos cuádruplos dentro de visitPrograma.
+        self.visit(ctx.programa())
         return self.func_dir, self.quads
+
+    # programa : PROGRAM ID SEMI programa_p programa_pp MAIN body END ;
+    def visitPrograma(self, ctx: PatitoParser.ProgramaContext):
+        # Nombre del programa (no lo usamos como función)
+        prog_name = ctx.ID().getText()
+
+        # Estamos en ámbito global
+        self.current_function = None
+
+        # 1) Emitir un GOTO placeholder al inicio de main para que la VM
+        # comience ejecutando main y no los cuerpos de las funciones.
+        goto_main_idx = self._emit("GOTO", None, None, None)
+
+        # 2) Declarar variables globales (no generan cuádruplos)
+        self.visit(ctx.programa_p())  # VARS globales
+
+        # 3) Generar cuádruplos de todas las funciones
+        self.visit(ctx.programa_pp())  # FUNCS
+
+        # 4) Calcular el índice de inicio de main y parchear el GOTO
+        main_start = len(self.quads)
+        self._fill_jump(goto_main_idx, main_start)
+
+        # 5) Traducir el cuerpo de main (BODY)
+        self.visit(ctx.body())
+
+        # 6) Marcar fin de programa explícito para la VM
+        self.quads.append(("END", None, None, None))
+
+        # Seguimos en ámbito global después de main
+        self.current_function = None
+        return self.func_dir
 
     # ----------------- FUNCIONES (declaración) ----------------- #
 
@@ -713,6 +742,15 @@ def translate(source: str) -> Tuple[object, List[Quad]]:
 
     visitor = CodeGenVisitor()
     func_dir, quads = visitor.visit(tree)
+
+    # Construir un mapa addr -> valor de constantes para la VM y pruebas
+    const_addr_to_value = {
+        addr: value
+        for (type_, value), addr in visitor.const_table.items
+    }
+    # Lo colgamos del directorio de funciones como ayuda para entrega 5
+    setattr(func_dir, "constants", const_addr_to_value)
+
     return func_dir, quads
 
 
