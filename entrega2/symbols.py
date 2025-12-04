@@ -31,9 +31,8 @@ class TypeMismatchError(SemanticError):
 
 # ----------------------------- VarTable --------------------------------- #
 
-@dataclass(frozen=True)
-
 #Representa una variable declarada
+@dataclass(frozen=True)
 class VarInfo:
     name: str
     type: TypeName
@@ -48,10 +47,10 @@ class VarTable:
         self._vars: Dict[str, VarInfo] = {}
 
     # Declara una variable nueva en el scope
-    def declare(self, name: str, type_: TypeName, *, kind: Literal["global", "local", "param", "temp"] = "local") -> VarInfo:
+    def declare(self, name: str, type_: TypeName, *, kind: Literal["global", "local", "param", "temp"] = "local", address: Optional[int] = None, ) -> VarInfo: #Agregue address en entrega3
         if name in self._vars:
             raise DuplicateSymbolError(f"Identificador duplicado en el mismo ámbito: {name}")
-        info = VarInfo(name=name, type=type_, kind=kind)
+        info = VarInfo(name=name, type=type_, kind=kind, address=address)
         self._vars[name] = info
         return info
 
@@ -85,18 +84,19 @@ class FunctionInfo:
     start_quad: Optional[int] = None #numero de cuadruplo donde inicia la funcion para gosub, ahorita no lo uso
 
     #Declara un parametro de la funcion, lo agrega a lista de params, y lo mete a la VarTable de la funcion (kind = param)
-    def declare_param(self, name: str, type_: TypeName) -> ParamInfo:
-        # Valida que no haya un param/var local con el mismo nombre
+    def declare_param(self, name: str,type_: TypeName, address: Optional[int] = None,) -> ParamInfo: #Agregue address en entrega3
         if self.vars.get(name) is not None:
-            raise DuplicateSymbolError(f"Parámetro/variable local duplicado en función '{self.name}': {name}")
+            raise DuplicateSymbolError(
+                f"Parámetro/variable local duplicado en función '{self.name}': {name}"
+            )
         p = ParamInfo(name=name, type=type_)
         self.params.append(p)
-        self.vars.declare(name, type_, kind="param")
+        self.vars.declare(name, type_, kind="param", address=address)
         return p
 
     # Declara una variable local en la funcion (kind = local)
-    def declare_local(self, name: str, type_: TypeName) -> VarInfo:
-        return self.vars.declare(name, type_, kind="local")
+    def declare_local(self, name: str, type_: TypeName, address: Optional[int] = None) -> VarInfo: #Agregue address en entrega3
+        return self.vars.declare(name, type_, kind="local", address=address)
 
     # Busca una variable sólo en el ambito local de la función
     def resolve_local(self, name: str) -> Optional[VarInfo]:
@@ -113,8 +113,9 @@ class FunctionDirectory:
         self._funcs: Dict[str, FunctionInfo] = {}
 
     #Declara una variable global
-    def declare_global(self, name: str, type_: TypeName) -> VarInfo:
-        return self._globals.declare(name, type_, kind="global")
+    def declare_global(self, name: str, type_: TypeName, address: Optional[int] = None,) -> VarInfo:
+        return self._globals.declare(name, type_, kind="global", address=address)
+
 
     #Regresa la variable global si existe, o None si no 
     def get_global(self, name: str) -> Optional[VarInfo]:
@@ -152,13 +153,13 @@ class FunctionDirectory:
 
     # ---- Variables locales / parametros (helpers) ---- #
 
-    def declare_param(self, func_name: str, param_name: str, param_type: TypeName) -> ParamInfo:
+    def declare_param(self, func_name: str, param_name: str, param_type: TypeName, address: Optional[int] = None,) -> ParamInfo: #Agregue address en entrega3
         func = self.get_function(func_name)
-        return func.declare_param(param_name, param_type)
+        return func.declare_param(param_name, param_type, address=address)
 
-    def declare_local(self, func_name: str, var_name: str, var_type: TypeName) -> VarInfo:
+    def declare_local(self, func_name: str, var_name: str, var_type: TypeName, address: Optional[int] = None,) -> VarInfo: #Agregue address en entrega3
         func = self.get_function(func_name)
-        return func.declare_local(var_name, var_type)
+        return func.declare_local(var_name, var_type, address=address)
 
     # --------- Resolucion de variables --------- #
 

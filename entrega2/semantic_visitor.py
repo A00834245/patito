@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
-from entrega2.symbols import FunctionDirectory
-from entrega2.semantic_cube import TypeName
+from .symbols import FunctionDirectory
+from .semantic_cube import TypeName
 
-from entrega1.generated.PatitoParser import PatitoParser
-from entrega1.generated.PatitoVisitor import PatitoVisitor
+from ..entrega1.generated.PatitoParser import PatitoParser
+from ..entrega1.generated.PatitoVisitor import PatitoVisitor
+
+from ..entrega4.virtual_memory import VirtualMemory  # Agregue en entrega3
 
 
 class SemanticVisitor(PatitoVisitor):
@@ -15,15 +17,21 @@ class SemanticVisitor(PatitoVisitor):
         super().__init__()
         self.func_dir = FunctionDirectory() # Directorio de funciones y variables globales (tabla global)
         self.current_function: str | None = None # Contexto, none = global, si no es el nombre de la funcion actual
+        self.vm = VirtualMemory() #Agregue en entrega3
 
     # ----------------- Helpers internos ----------------- #
 
     #Declara una variable en el scope correcto (global o local)
     def _declare_var(self, name: str, type_: TypeName):
         if self.current_function is None:
-            return self.func_dir.declare_global(name, type_)
+            # variable global
+            addr = self.vm.alloc_var(kind="global", type_=type_)
+            return self.func_dir.declare_global(name, type_, address=addr)
         else:
-            return self.func_dir.declare_local(self.current_function, name, type_)
+            # variable local dentro de una función
+            addr = self.vm.alloc_var(kind="local", type_=type_)
+            return self.func_dir.declare_local(self.current_function, name, type_, address=addr)
+
 
     # ----------------- Reglas de programa/vars/funcs ----------------- #
 
@@ -132,10 +140,18 @@ class SemanticVisitor(PatitoVisitor):
         if self.current_function is None:
             raise RuntimeError("Parámetro declarado fuera de función")
         param_name = ctx.ID().getText()
-        param_type: TypeName = self.visit(ctx.type_()) #igual que type
-        self.func_dir.declare_param(self.current_function, param_name, param_type) #deckara parametro en la funcion actual
-        self.visit(ctx.funcs_pppp()) #posibles parametros adicionales
+        param_type: TypeName = self.visit(ctx.type_())
+        # direccion param (segmento "local", pero kind param)
+        addr = self.vm.alloc_var(kind="param", type_=param_type)
+        self.func_dir.declare_param(
+            self.current_function,
+            param_name,
+            param_type,
+            address=addr,
+        )
+        self.visit(ctx.funcs_pppp())
         return None
+
 
     # funcs_pppp : COMMA funcs_pp | /* empty */ ;
     def visitFuncs_pppp(self, ctx: PatitoParser.Funcs_ppppContext):
