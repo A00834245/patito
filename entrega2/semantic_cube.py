@@ -1,54 +1,72 @@
-# Cubo semántico en estructuras Python para validación de tipos.
+# Cubo semantico
+
 from __future__ import annotations
+from typing import Dict, Tuple, Optional, Literal
 
-from typing import Dict, Tuple
+TypeName = Literal["int", "float", "bool", "string", "void"] #string es placeholder
+BinKey = Tuple[TypeName, TypeName]
 
-T = Tuple[str, str]
-
-# Tipos soportados
-TYPES = {"int", "float", "bool", "string", "void"}
-
-# Operadores binarios: op -> {(left_type, right_type): result_type}
-SEM_CUBE: Dict[str, Dict[T, str]] = {
-    # Aritmética
-    "PLUS": {
+# Operadores binarios
+# op -> { (left_type, right_type): result_type }
+SEM_CUBE: Dict[str, Dict[BinKey, TypeName]] = {
+    # ---------- Arirmetica ----------
+    "+": {
         ("int", "int"): "int",
         ("int", "float"): "float",
         ("float", "int"): "float",
         ("float", "float"): "float",
     },
-    "MINUS": {
+    "-": {
         ("int", "int"): "int",
         ("int", "float"): "float",
         ("float", "int"): "float",
         ("float", "float"): "float",
     },
-    "MUL": {
+    "*": {
         ("int", "int"): "int",
         ("int", "float"): "float",
         ("float", "int"): "float",
         ("float", "float"): "float",
     },
-    "DIV": {
+    "/": {
         ("int", "int"): "float",
         ("int", "float"): "float",
         ("float", "int"): "float",
         ("float", "float"): "float",
     },
-    # Comparaciones → bool (solo numéricas)
-    "GT": {
+
+    # ---------- Relacionales ----------
+    ">": {
         ("int", "int"): "bool",
         ("int", "float"): "bool",
         ("float", "int"): "bool",
         ("float", "float"): "bool",
     },
-    "LT": {
+    "<": {
         ("int", "int"): "bool",
         ("int", "float"): "bool",
         ("float", "int"): "bool",
         ("float", "float"): "bool",
     },
-    "NEQ": {
+    ">=": {
+        ("int", "int"): "bool",
+        ("int", "float"): "bool",
+        ("float", "int"): "bool",
+        ("float", "float"): "bool",
+    },
+    "<=": {
+        ("int", "int"): "bool",
+        ("int", "float"): "bool",
+        ("float", "int"): "bool",
+        ("float", "float"): "bool",
+    },
+    "==": {
+        ("int", "int"): "bool",
+        ("int", "float"): "bool",
+        ("float", "int"): "bool",
+        ("float", "float"): "bool",
+    },
+    "!=": {
         ("int", "int"): "bool",
         ("int", "float"): "bool",
         ("float", "int"): "bool",
@@ -56,27 +74,39 @@ SEM_CUBE: Dict[str, Dict[T, str]] = {
     },
 }
 
-# Operadores unarios: op -> {operand_type: result_type}
-UNARY = {
-    "PLUS": {"int": "int", "float": "float"},
-    "MINUS": {"int": "int", "float": "float"},
+# Operadores unarios (-x. +x)
+# op -> { operand_type: result_type }
+UNARY_CUBE: Dict[str, Dict[TypeName, TypeName]] = {
+    "+": {
+        "int": "int",
+        "float": "float",
+    },
+    "-": {
+        "int": "int",
+        "float": "float",
+    },
 }
 
-# Asignación permitida: (dest_type, src_type) -> True
-ASSIGN_OK = {
+# Asignacion permitida
+# (dest, src) -> True/False
+ASSIGN_OK: Dict[BinKey, bool] = {
     ("int", "int"): True,
-    ("float", "int"): True,
     ("float", "float"): True,
+    ("float", "int"): True,  
+    ("bool", "bool"): True,
+    ("string", "string"): True,
+    # ("int", "float"): True,  # la deje en comment pero si quiero truncar lo permito
 }
 
-
-def type_of_binary(op: str, left: str, right: str) -> str | None:
+#Devuelve el resultado (tipo) de una operacion binaria (left op right), o none si es invalido
+def type_of_binary(op: str, left: TypeName, right: TypeName) -> Optional[TypeName]:
     return SEM_CUBE.get(op, {}).get((left, right))
 
+#Devuelve el resultado (tipo) de una operacion unaria (op operand), o none si es invalido
+def type_of_unary(op: str, operand: TypeName) -> Optional[TypeName]:
+    return UNARY_CUBE.get(op, {}).get(operand)
 
-def type_of_unary(op: str, operand: str) -> str | None:
-    return UNARY.get(op, {}).get(operand)
-
-
-def can_assign(dest: str, src: str) -> bool:
+#Devuelve True si es una asignacion valida, o False en sino
+def can_assign(dest: TypeName, src: TypeName) -> bool:
     return ASSIGN_OK.get((dest, src), False)
+

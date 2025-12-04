@@ -1,110 +1,136 @@
-# Directorio de funciones y tablas de variables para Patito (con validaciones).
+# Eestructuras del directorio de funciones 
+
 from __future__ import annotations
-
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Literal
+from typing import Dict, List, Optional, Literal
 
-# Tipos soportados actualmente por Patito
-TypeName = Literal["int", "float", "bool", "void", "string"]
+try: # no me estaba funcionando los imports
+    from entrega2.semantic_cube import TypeName
+except ImportError:
+    TypeName = Literal["int", "float", "bool", "string", "void"]
 
 
-# --------------------------- Errores semánticos ---------------------------
+# ---------------------- Errores semanticos basicos ---------------------- #
+
+# Base para los errores semanticos
 class SemanticError(Exception):
-    """Base para errores semánticos."""
+    pass
 
-
+# Lanza error cuando se redeclara una variable o funcion en el mismo scope
 class DuplicateSymbolError(SemanticError):
     pass
 
-
+# Lanza error cuando se usa un identificador no declarado
 class UndefinedSymbolError(SemanticError):
     pass
 
-
+# Lanza error cuando hay incompatibilidad de tipos (todavia no implementado)
 class TypeMismatchError(SemanticError):
     pass
 
 
-# ------------------------ Tablas de variables ----------------------------
+# ----------------------------- VarTable --------------------------------- #
+
+#Representa una variable declarada
 @dataclass(frozen=True)
 class VarInfo:
     name: str
     type: TypeName
-    kind: Literal["global", "local", "param", "temp"] = "local"
-    address: Optional[int] = None  # reservado para asignación de memoria futura
+    kind: Literal["global", "local", "param", "temp"] = "local" #saber que kind es 
+    address: Optional[int] = None #para cuando asigne memoria virtual
 
-
+#Tabla de variables para un scope (global o local de funcion)
+#Internamente es un dict
 class VarTable:
-    """Tabla de variables por ámbito (global o local/params)."""
 
     def __init__(self) -> None:
         self._vars: Dict[str, VarInfo] = {}
 
-    def declare(self, name: str, type_: TypeName, *, kind: VarInfo.__annotations__["kind"] = "local") -> VarInfo:
+    # Declara una variable nueva en el scope
+    def declare(self, name: str, type_: TypeName, *, kind: Literal["global", "local", "param", "temp"] = "local", address: Optional[int] = None, ) -> VarInfo: #Agregue address en entrega3
         if name in self._vars:
-            raise DuplicateSymbolError(f"Identificador duplicado: {name}")
-        info = VarInfo(name=name, type=type_, kind=kind)
+            raise DuplicateSymbolError(f"Identificador duplicado en el mismo ámbito: {name}")
+        info = VarInfo(name=name, type=type_, kind=kind, address=address)
         self._vars[name] = info
         return info
 
+    #Regresa la VarInfo de una variable si existe, o None si no existe en la tabla
     def get(self, name: str) -> Optional[VarInfo]:
         return self._vars.get(name)
 
-    def __contains__(self, name: str) -> bool:  # pragma: no cover
+    def __contains__(self, name: str) -> bool:
         return name in self._vars
 
-    def items(self):  # pragma: no cover
+    #Iterar sobre (nombre, VarInfo), para depuracion o reportes
+    def items(self):
         return self._vars.items()
 
 
-# --------------------------- Directorio de funciones ----------------------
+# ---------------------- FunctionInfo y ParamInfo ------------------------ #
+
+#Info de un parametro formal de una funcion
 @dataclass
 class ParamInfo:
     name: str
     type: TypeName
 
-
+#Guarda toda la informacion de una funcion 
 @dataclass
 class FunctionInfo:
-    name: str
-    return_type: TypeName  # "void" en el lenguaje actual
+    name: str 
+    return_type: TypeName = "void"
     params: List[ParamInfo] = field(default_factory=list)
-    vars: VarTable = field(default_factory=VarTable)  # locales + params
-    start_quad: Optional[int] = None  # reservado para cuadruplos
+    vars: VarTable = field(default_factory=VarTable)  # tabla de variables locales y parámetros
+    start_quad: Optional[int] = None  # índice de cuádruplo donde inicia la función (para GOSUB)
+    # Dirección virtual donde se almacenará el valor de retorno de la función (si no es void).
+    # Se llena en CodeGenVisitor al momento de declarar la función.
+    return_address: Optional[int] = None #modificado en entrega5
 
-    def declare_param(self, name: str, type_: TypeName) -> ParamInfo:
-        if self.vars.get(name):
-            raise DuplicateSymbolError(f"Parámetro duplicado: {name}")
+
+    #Declara un parametro de la funcion, lo agrega a lista de params, y lo mete a la VarTable de la funcion (kind = param)
+    def declare_param(self, name: str,type_: TypeName, address: Optional[int] = None,) -> ParamInfo: #Agregue address en entrega3
+        if self.vars.get(name) is not None:
+            raise DuplicateSymbolError(
+                f"Parámetro/variable local duplicado en función '{self.name}': {name}"
+            )
         p = ParamInfo(name=name, type=type_)
         self.params.append(p)
-        self.vars.declare(name, type_, kind="param")
+        self.vars.declare(name, type_, kind="param", address=address)
         return p
 
-    def declare_local(self, name: str, type_: TypeName) -> VarInfo:
-        return self.vars.declare(name, type_, kind="local")
+    # Declara una variable local en la funcion (kind = local)
+    def declare_local(self, name: str, type_: TypeName, address: Optional[int] = None) -> VarInfo: #Agregue address en entrega3
+        return self.vars.declare(name, type_, kind="local", address=address)
 
+    # Busca una variable sólo en el ambito local de la función
     def resolve_local(self, name: str) -> Optional[VarInfo]:
         return self.vars.get(name)
 
 
-class FunctionDirectory:
-    """Directorio de funciones con firmas y tablas de variables (alcance local→global)."""
+# --------------------------- FunctionDirectory -------------------------- #
 
+#Estructure principal de simbolos de todo el programa
+#Mantiene la tabla global de variables, un dict de nombre_funcion, y provee metodos para declara y resolver simbolos
+class FunctionDirectory:
     def __init__(self) -> None:
         self._globals = VarTable()
         self._funcs: Dict[str, FunctionInfo] = {}
 
-    # ---- Globales ----
-    def declare_global(self, name: str, type_: TypeName) -> VarInfo:
-        return self._globals.declare(name, type_, kind="global")
+    #Declara una variable global
+    def declare_global(self, name: str, type_: TypeName, address: Optional[int] = None,) -> VarInfo:
+        return self._globals.declare(name, type_, kind="global", address=address)
 
+
+    #Regresa la variable global si existe, o None si no 
     def get_global(self, name: str) -> Optional[VarInfo]:
         return self._globals.get(name)
 
-    # ---- Funciones ----
+
+    #Declara una nueva función, lanza DuplicateSymbolError si el nombre ya estaba registrado
     def declare_function(self, name: str, return_type: TypeName = "void") -> FunctionInfo:
         if name in self._funcs:
             raise DuplicateSymbolError(f"Función duplicada: {name}")
+
         fi = FunctionInfo(name=name, return_type=return_type)
         self._funcs[name] = fi
         return fi
@@ -112,41 +138,55 @@ class FunctionDirectory:
     def has_function(self, name: str) -> bool:
         return name in self._funcs
 
+    #Regresa la FunctionInfo de una funcion, o lanza UndefinedSymbolError si no existe
     def get_function(self, name: str) -> FunctionInfo:
         try:
             return self._funcs[name]
-        except KeyError as e:  # pragma: no cover
+        except KeyError as e:
             raise UndefinedSymbolError(f"Función no definida: {name}") from e
 
-    def set_start(self, name: str, start_quad: int) -> None:
-        self.get_function(name).start_quad = start_quad
+    # Asigna el indice de cuadruplo donde inicia una funcion (lo usare en gosub despues)
+    def set_start_quad(self, name: str, start_quad: int) -> None:
+        func = self.get_function(name)
+        func.start_quad = start_quad
 
-    def signature(self, name: str) -> Tuple[TypeName, List[TypeName]]:
+    # Regresa la firma de una funcion (return_type, [param_types...]), se usa para validar llamadas
+    def signature(self, name: str) -> tuple[TypeName, list[TypeName]]:
         f = self.get_function(name)
         return f.return_type, [p.type for p in f.params]
 
-    # ---- Variables locales / parámetros ----
-    def declare_param(self, func_name: str, param_name: str, param_type: TypeName) -> ParamInfo:
-        return self.get_function(func_name).declare_param(param_name, param_type)
+    # ---- Variables locales / parametros (helpers) ---- #
 
-    def declare_local(self, func_name: str, var_name: str, var_type: TypeName) -> VarInfo:
-        return self.get_function(func_name).declare_local(var_name, var_type)
+    def declare_param(self, func_name: str, param_name: str, param_type: TypeName, address: Optional[int] = None,) -> ParamInfo: #Agregue address en entrega3
+        func = self.get_function(func_name)
+        return func.declare_param(param_name, param_type, address=address)
 
-    # ---- Resolución ----
+    def declare_local(self, func_name: str, var_name: str, var_type: TypeName, address: Optional[int] = None,) -> VarInfo: #Agregue address en entrega3
+        func = self.get_function(func_name)
+        return func.declare_local(var_name, var_type, address=address)
+
+    # --------- Resolucion de variables --------- #
+
+    # Busca una variable en el ambito local de current_func (si hay), y si no en globales
     def resolve_var(self, name: str, current_func: Optional[str]) -> VarInfo:
-        """Busca primero en local (función actual) y luego en global. Lanza error si no existe."""
+        # 1. Primero buscar en la función actual
         if current_func is not None and current_func in self._funcs:
-            v = self._funcs[current_func].resolve_local(name)
-            if v is not None:
-                return v
-        v = self._globals.get(name)
-        if v is not None:
-            return v
+            local_var = self._funcs[current_func].resolve_local(name)
+            if local_var is not None:
+                return local_var
+        # 2. Luego buscar en globales
+        global_var = self._globals.get(name)
+        if global_var is not None:
+            return global_var
+        # 3. Si no está en ningún lado, error
         raise UndefinedSymbolError(f"Identificador no definido: {name}")
 
-    # ---- Inspección (opcional) ----
-    def all_globals(self) -> Dict[str, VarInfo]:  # pragma: no cover
+    # --------- Métodos de inspección / depuración --------- #
+
+    # Regresa una copia de la tabla global 
+    def all_globals(self) -> Dict[str, VarInfo]:
         return dict(self._globals._vars)
 
-    def all_functions(self) -> Dict[str, FunctionInfo]:  # pragma: no cover
+    # Regresa una copia del diccionario de funciones
+    def all_functions(self) -> Dict[str, FunctionInfo]:
         return dict(self._funcs)

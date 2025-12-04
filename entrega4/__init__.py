@@ -1,8 +1,1 @@
-﻿from __future__ import annotations
-
-# Re-export entrega3 structures/IR to avoid duplication
-from entrega3 import Stack, POper, PilaO, PTipos, Precedence, IRQueue, Quad
-
-__all__ = [
-    "Stack", "POper", "PilaO", "PTipos", "Precedence", "IRQueue", "Quad",
-]
+# Archivo vacio para que Python trate el folder /entrega3 como un paquete.
