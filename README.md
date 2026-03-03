@@ -1,5 +1,6 @@
 # Patito — Compilador de Lenguaje Patito
 
+Elaborado por: Maruca Cantu Valdes A00834245
 Patito es un compilador/intérprete completo para un lenguaje de programación educativo llamado **Patito**, desarrollado de manera incremental en cinco entregas. El proyecto abarca todas las etapas clásicas de la construcción de un compilador: análisis léxico-sintáctico, análisis semántico, generación de código intermedio, administración de memoria virtual y ejecución en una máquina virtual.
 
 ---
